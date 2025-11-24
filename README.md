@@ -48,8 +48,8 @@ sequenceDiagram
 
 ```bash
 # Dossier de travail
-mkdir -p pki/root/{private,certs,csr,newcerts}
-mkdir -p pki/intermediate/{private,certs,csr,newcerts}
+mkdir -p pki/root/{private,certs,csr,newcerts,crl}
+mkdir -p pki/intermediate/{private,certs,csr,newcerts,crl}
 mkdir -p pki/{server,client}
 
 # Permissions minimales sur les clés privées
@@ -59,6 +59,8 @@ chmod 700 pki/root/private pki/intermediate/private
 touch pki/root/index.txt pki/intermediate/index.txt
 echo 1000 > pki/root/serial
 echo 2000 > pki/intermediate/serial
+echo 3000 > pki/root/crlnumber
+echo 4000 > pki/intermediate/crlnumber
 ```
 
 ## 1. Créer l’AC racine
@@ -104,6 +106,37 @@ openssl x509 -req -in pki/intermediate/csr/intermediate.csr.pem \
 # Chaîne complète intermédiaire + racine
 cat pki/intermediate/certs/intermediate.cert.pem pki/root/certs/ca.cert.pem \
   > pki/intermediate/certs/chain.cert.pem
+
+# (Option) Fichier de configuration OpenSSL pour l’intermédiaire (CRL & signatures)
+cat > pki/intermediate/openssl.cnf <<'EOF'
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+dir               = ./pki/intermediate
+certs             = $dir/certs
+crl_dir           = $dir/crl
+database          = $dir/index.txt
+new_certs_dir     = $dir/newcerts
+certificate       = $dir/certs/intermediate.cert.pem
+serial            = $dir/serial
+crlnumber         = $dir/crlnumber
+crl               = $dir/crl/intermediate.crl.pem
+private_key       = $dir/private/intermediate.key.pem
+RANDFILE          = $dir/private/.rand
+default_md        = sha256
+default_days      = 825
+policy            = policy_loose
+copy_extensions   = copy
+
+[ policy_loose ]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+EOF
 ```
 
 ## 3. Générer une clé et une CSR pour un certificat web
@@ -167,6 +200,19 @@ openssl x509 -req -in pki/client/client.csr.pem \
   -CAcreateserial -out pki/client/client.cert.pem \
   -days 825 -sha256 -extfile pki/client/client.ext
 ```
+
+## 6. Générer et publier une CRL (intermédiaire)
+
+```bash
+# Générer la CRL de l’AC intermédiaire
+openssl ca -config pki/intermediate/openssl.cnf -gencrl \
+  -out pki/intermediate/crl/intermediate.crl.pem
+
+# Visualiser la CRL
+openssl crl -in pki/intermediate/crl/intermediate.crl.pem -text -noout
+```
+
+En cas de révocation (avec `openssl ca -config pki/intermediate/openssl.cnf -revoke <cert>`), régénérez la CRL avec la même commande `-gencrl` et republiez le fichier CRL.
 
 ## Vérifier les certificats
 
@@ -254,8 +300,26 @@ curl -v https://localhost:4443/ \
 
 Si le certificat client est invalide ou absent, le serveur refuse la connexion (erreur TLS).
 
+### Démo : révoquer le certificat client et regénérer la CRL
+
+```bash
+# Révoquer le certificat client
+openssl ca -config pki/intermediate/openssl.cnf \
+  -revoke pki/client/client.cert.pem
+
+# Regénérer la CRL après révocation
+openssl ca -config pki/intermediate/openssl.cnf -gencrl \
+  -out pki/intermediate/crl/intermediate.crl.pem
+
+# Vérifier que le numéro de CRL a incrémenté et que le client est listé
+openssl crl -in pki/intermediate/crl/intermediate.crl.pem -text -noout | head
+```
+
+Pour que les clients refusent un certificat révoqué, ils doivent récupérer la CRL à jour (ou interroger OCSP si vous l’ajoutez). En démo locale, vous pouvez pointer vos clients vers `pki/intermediate/crl/intermediate.crl.pem`.
+
 ## Notes pratiques
 
 - Pensez à sauvegarder les mots de passe des clés privées et à restreindre les permissions de fichiers (`chmod 600` pour les clés).
 - Les valeurs de `-subj` et des SAN sont à adapter à votre domaine de test.
 - Les durées (`-days`) sont volontairement courtes pour l’exercice ; augmentez‑les pour un usage réel.
+- Pour un usage réel, ajoutez des points de distribution CRL/OCSP dans vos extensions (`crlDistributionPoints`, `authorityInfoAccess`) et publiez la CRL sur un endpoint HTTP accessible aux clients.
