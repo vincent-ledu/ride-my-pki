@@ -1,4 +1,4 @@
-![alt Ride My PKI](docs/RideMyPKI.png "Monter sa propre PKI")
+![alt Ride My PKI](docs/RideMyPKI.png "Monter sa propre PKI - Généré par ChatGPT OpenAI")
 
 # TP : Monter sa propre PKI avec OpenSSL
 
