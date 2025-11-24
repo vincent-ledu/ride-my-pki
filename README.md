@@ -126,6 +126,8 @@ private_key       = $dir/private/intermediate.key.pem
 RANDFILE          = $dir/private/.rand
 default_md        = sha256
 default_days      = 825
+default_crl_days  = 7
+default_crl_hours = 0
 policy            = policy_loose
 copy_extensions   = copy
 
@@ -213,6 +215,8 @@ openssl crl -in pki/intermediate/crl/intermediate.crl.pem -text -noout
 ```
 
 En cas de révocation (avec `openssl ca -config pki/intermediate/openssl.cnf -revoke <cert>`), régénérez la CRL avec la même commande `-gencrl` et republiez le fichier CRL.
+
+> Astuce : exécutez les commandes depuis la racine du dépôt pour que les chemins relatifs du fichier `pki/intermediate/openssl.cnf` fonctionnent (`./pki/intermediate/...`). Si besoin, ajustez `dir =` dans le fichier de configuration pour un chemin absolu.
 
 ## Vérifier les certificats
 
