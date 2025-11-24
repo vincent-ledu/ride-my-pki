@@ -437,3 +437,7 @@ Pour que les clients refusent un certificat révoqué, ils doivent récupérer l
 # Sources et références
 
 Ce projet a été rédigé par ChatGPT d'OpenAI.
+
+# Licence
+
+Utilisation libre de droit, sauf réclamation.
