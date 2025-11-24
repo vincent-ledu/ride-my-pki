@@ -6,6 +6,14 @@ Ce guide pas à pas rassemble les commandes pour créer une autorité de certifi
 
 _CECI N'EST PAS PROD READY_
 
+## Concepts clés
+
+- Chaque certificat est signé par l’autorité au-dessus : le certificat serveur est signé par l’AC intermédiaire, elle-même signée par l’AC racine.
+- Le client possède déjà l’AC racine dans son magasin d’ancres de confiance et fait confiance à ce qu’elle signe directement ou indirectement.
+- Le serveur envoie son certificat et celui de l’intermédiaire ; le client vérifie les signatures en remontant jusqu’à la racine qu’il connaît.
+- Si signatures, dates, usages et révocation (CRL/OCSP) sont OK, la connexion est acceptée ; sinon elle est refusée.
+- La révocation (CRL/OCSP) rend un certificat non fiable même s’il a été correctement signé à l’origine.
+
 ## Diagramme du flux de création de certificat
 
 ```mermaid
@@ -20,7 +28,7 @@ flowchart TD
   install --> clients[Clients HTTPS : présentent la chaîne intermédiaire + racine]
 ```
 
-### Diagramme de séquence (où se passe quoi)
+## Diagramme de séquence (où se passe quoi)
 
 ```mermaid
 sequenceDiagram
@@ -333,3 +341,14 @@ Pour que les clients refusent un certificat révoqué, ils doivent récupérer l
 - Les valeurs de `-subj` et des SAN sont à adapter à votre domaine de test.
 - Les durées (`-days`) sont volontairement courtes pour l’exercice ; augmentez‑les pour un usage réel.
 - Pour un usage réel, ajoutez des points de distribution CRL/OCSP dans vos extensions (`crlDistributionPoints`, `authorityInfoAccess`) et publiez la CRL sur un endpoint HTTP accessible aux clients.
+
+## Pour la production : concepts à approfondir
+
+- **Racine hors ligne** : AC racine déconnectée, clé sur HSM ou support chiffré, usage ponctuel uniquement pour signer les intermédiaires.
+- **Intermédiaires durcis** : clés sur HSM si possible, OS minimal, segmentation réseau, supervision et journaux centralisés.
+- **Profils de certificats** : numéros de série non prédictibles, SAN obligatoires, EKU précis, `pathlen` pour les CA, durées adaptées (courtes pour les finaux).
+- **Révocation** : publication CRL sur HTTP, mise en place OCSP si pertinent, rotation régulière des CRL, tests clients (curl, navigateurs) qui consomment CRL/OCSP.
+- **Processus RA/approbation** : validation de l’identité ou du contrôle de domaine, approbation à 4 yeux pour les signatures sensibles.
+- **Durcissement TLS** : versions récentes, suites à PFS, désactivation de TLS/algos obsolètes.
+- **Sécurité opérationnelle** : sauvegardes chiffrées testées, MFA/RBAC, gestion des secrets, plan de rotation/renouvellement de clés, procédures d’incident.
+- **Déploiement des ancres** : méthode pour installer racine/intermédiaire dans les stores clients/serveurs, vérification de compatibilité (mTLS inclus).
