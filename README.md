@@ -14,6 +14,34 @@ _CECI N'EST PAS PROD READY_
 - Si signatures, dates, usages et révocation (CRL/OCSP) sont OK, la connexion est acceptée ; sinon elle est refusée.
 - La révocation (CRL/OCSP) rend un certificat non fiable même s’il a été correctement signé à l’origine.
 
+```mermaid
+flowchart TD
+
+    subgraph CA["Chaîne de confiance PKI"]
+        ROOT["AC racine \(auto-signée\)"]
+        INT["AC intermédiaire \(signée par la racine\)"]
+        SRV["Certificat serveur \(signé par l'intermédiaire\)"]
+    end
+
+    ROOT --> INT --> SRV
+
+    CLIENT[(Client : magasin d’ancres de confiance)]
+    CRL[CRL / OCSP]
+
+    CLIENT -->|"possède la racine"| ROOT
+    SRV -->|"envoie cert serveur + intermédiaire"| CLIENT
+
+    CLIENT --> V1["Vérifier la signature du certificat serveur"]
+    V1 --> V2["Vérifier la signature du certificat intermédiaire"]
+    V2 --> V3["Vérifier validité et usages"]
+    V3 --> V4["Vérifier révocation \(CRL / OCSP\)"]
+
+    V4 -->|OK| ACCEPT[Connexion acceptée]
+    V4 -->|KO| REFUSE[Connexion refusée]
+
+    CRL -->|"indique révocation"| V4
+```
+
 ## Diagramme du flux de création de certificat
 
 ```mermaid
@@ -45,6 +73,51 @@ sequenceDiagram
   PKI-->>Admin: Retour du certificat signé + chaîne (intermédiaire + racine)
   Admin->>Admin: Installation sur le serveur web (clé privée + cert + chaîne)
   Note over Admin,PKI: Les clés privées restent sur leurs hôtes respectifs
+```
+
+## Diagramme de séquence : chiffrement client-serveur (TLS/mTLS)
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant Serveur as Serveur web
+  participant PKI as PKI / Trust store
+
+  Client->>Serveur: ClientHello (version TLS, suites, SNI, keyshare)
+  Serveur-->>Client: ServerHello (choix version/suite, keyshare)
+  Serveur-->>Client: EncryptedExtensions (paramètres négociés)
+  Serveur-->>Client: Certificate + chaîne intermédiaire
+  Client->>PKI: Vérifie signatures, validité, usages, CRL/OCSP
+  Serveur-->>Client: CertificateRequest (optionnel si mTLS)
+  Serveur-->>Client: CertificateVerify + Finished (prouve possession clé privée)
+  Client-->>Serveur: (Si mTLS) Certificate + chaîne
+  Client-->>Serveur: (Si mTLS) CertificateVerify (signature avec clé privée client)
+  Client-->>Serveur: Finished (clé de session dérivée)
+  Serveur->>PKI: (Si mTLS) Vérifie le cert client, usages, CRL/OCSP
+  Serveur-->>Client: ApplicationData (après validation et clés dérivées)
+  Note over Client,Serveur: Clés de session dérivées via ECDHE/KEM (PFS) pour chiffrer le trafic applicatif
+  Client-->>Serveur: Requête HTTPS chiffrée
+  Serveur-->>Client: Réponse chiffrée
+```
+
+## Diagramme de séquence : chiffrement asymétrique (clé publique/privée)
+
+```mermaid
+sequenceDiagram
+  participant Alice as Émetteur
+  participant Bob as Destinataire
+  participant Attest as PKI / Certificat de Bob
+
+  Note over Bob: Génère clé privée Bob (secret)<br/>+ clé publique Bob
+  Bob-->>Attest: Soumet sa clé publique pour signature (certificat)
+  Attest-->>Bob: Certificat Bob (clé publique signée)
+
+  Alice-->>Attest: Récupère le certificat de Bob
+  Alice->>Alice: Vérifie la signature du certificat avec la racine/intermédiaire
+  Alice->>Alice: Chiffre le message avec la clé publique de Bob
+  Alice-->>Bob: Envoie le message chiffré
+  Bob->>Bob: Déchiffre avec sa clé privée (seul Bob peut)
+  Note over Alice,Bob: Confidentialité : seule la clé privée de Bob déchiffre
 ```
 
 ## Pré‑requis
@@ -360,3 +433,7 @@ Pour que les clients refusent un certificat révoqué, ils doivent récupérer l
 - Approche recommandée : modes hybrides (classique + PQC) pour tester l’interop et garder la compatibilité pendant la transition.
 - Pistes libres/gratuites à tester : LibOQS/Open Quantum Safe (forks OpenSSL/BoringSSL), OpenSSH ≥ 9.x (kex hybrides `sntrup761x25519-sha512`), implémentations PQC via PQClean, forks wolfSSL/mbedTLS orientés PQC.
 - Préparer la migration : inventaire des usages RSA/ECDSA, tests TLS hybrides (ex. ECDHE+Kyber), plan de distribution des nouvelles ancres/certificats PQC et rotation rapide quand les stacks seront stabilisées.
+
+# Sources et références
+
+Ce projet a été rédigé par ChatGPT d'OpenAI.
