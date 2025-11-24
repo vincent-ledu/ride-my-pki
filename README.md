@@ -95,6 +95,8 @@ basicConstraints=critical,CA:true,pathlen:0
 keyUsage=critical,keyCertSign,cRLSign
 subjectKeyIdentifier=hash
 authorityKeyIdentifier=keyid:always
+crlDistributionPoints=URI:http://pki.local/crl/intermediate.crl.pem
+authorityInfoAccess=OCSP;URI:http://pki.local/ocsp,caIssuers;URI:http://pki.local/certs/intermediate.cert.pem
 EOF
 
 # Signature de la CSR avec l’AC racine
@@ -162,6 +164,8 @@ basicConstraints=CA:false
 keyUsage=critical,digitalSignature,keyEncipherment
 extendedKeyUsage=serverAuth
 subjectAltName=@alt_names
+crlDistributionPoints=URI:http://pki.local/crl/intermediate.crl.pem
+authorityInfoAccess=OCSP;URI:http://pki.local/ocsp,caIssuers;URI:http://pki.local/certs/intermediate.cert.pem
 
 [alt_names]
 DNS.1=www.exemple.local
@@ -193,6 +197,8 @@ basicConstraints=CA:false
 keyUsage=critical,digitalSignature,keyEncipherment
 extendedKeyUsage=clientAuth,emailProtection
 subjectAltName=DNS:client.demo,email:client@example.test
+crlDistributionPoints=URI:http://pki.local/crl/intermediate.crl.pem
+authorityInfoAccess=OCSP;URI:http://pki.local/ocsp,caIssuers;URI:http://pki.local/certs/intermediate.cert.pem
 EOF
 
 # Signature de la CSR client par l’intermédiaire
