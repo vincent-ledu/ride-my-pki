@@ -352,3 +352,11 @@ Pour que les clients refusent un certificat révoqué, ils doivent récupérer l
 - **Durcissement TLS** : versions récentes, suites à PFS, désactivation de TLS/algos obsolètes.
 - **Sécurité opérationnelle** : sauvegardes chiffrées testées, MFA/RBAC, gestion des secrets, plan de rotation/renouvellement de clés, procédures d’incident.
 - **Déploiement des ancres** : méthode pour installer racine/intermédiaire dans les stores clients/serveurs, vérification de compatibilité (mTLS inclus).
+
+## Pour aller plus loin : post-quantique
+
+- Les schémas RSA/ECDSA/ECDH seront cassés par Shor sur une machine quantique suffisante ; le trafic enregistré aujourd’hui pourra être déchiffré plus tard (“harvest now, decrypt later”).
+- Les hash restent robustes (Grover ne fait que réduire la marge par deux) ; l’impact principal concerne signatures et échanges de clés.
+- Approche recommandée : modes hybrides (classique + PQC) pour tester l’interop et garder la compatibilité pendant la transition.
+- Pistes libres/gratuites à tester : LibOQS/Open Quantum Safe (forks OpenSSL/BoringSSL), OpenSSH ≥ 9.x (kex hybrides `sntrup761x25519-sha512`), implémentations PQC via PQClean, forks wolfSSL/mbedTLS orientés PQC.
+- Préparer la migration : inventaire des usages RSA/ECDSA, tests TLS hybrides (ex. ECDHE+Kyber), plan de distribution des nouvelles ancres/certificats PQC et rotation rapide quand les stacks seront stabilisées.
