@@ -128,6 +128,9 @@ sequenceDiagram
 ## Préparer l’arborescence de travail
 
 ```bash
+# Sous git bash windows : empèche l'expansion des chemin, qui gène certaines commandes
+MSYS_NO_PATHCONV=1
+
 # Dossier de travail
 mkdir -p pki/root/{private,certs,csr,newcerts,crl}
 mkdir -p pki/intermediate/{private,certs,csr,newcerts,crl}
