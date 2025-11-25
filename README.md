@@ -382,6 +382,12 @@ Lancer le serveur :
 python3 server.py
 ```
 
+### Importer le certificat AC dans chrome
+
+Burger menu > Paramètres > Rechercher certificat > Sécurité > Gérer les certificats > Personnalisé > Certificats approuvés > pki\root\certs\ca.cert.pem
+
+Aller sur https://localhost:4443
+
 ### Tester avec un certificat client
 
 Avec `curl` :
